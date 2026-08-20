@@ -1,213 +1,106 @@
 # Graph DB Benchmark
 
-Python benchmark harness for comparing managed graph database platforms on the same sampled social graph dataset.
+Benchmarking CognoDB Cloud against managed graph database platforms.
 
-The project prepares a directed edge-list dataset, loads it into configured graph databases, runs read/write workloads, writes JSON results, generates charts, and serves a small static dashboard.
+## Results
 
-## Supported Platforms
+### Traversal Latency
 
-Implemented loaders:
+| metric | cognodb | aura | memgraph |
+| --- | --- | --- | --- |
+| 1-hop p50 ms | - | - | - |
+| 1-hop p95 ms | - | - | - |
+| 2-hop p50 ms | - | - | - |
+| 2-hop p95 ms | - | - | - |
+| 3-hop p50 ms | - | - | - |
+| 3-hop p95 ms | - | - | - |
 
-- CognoDB Cloud: `cognodb`
-- Neo4j AuraDB: `aura`
-- Memgraph Cloud: `memgraph`
-- FalkorDB: `falkordb`
-- ArangoDB Oasis: `arango`
-- TigerGraph Cloud: `tigergraph`
+![Traversal latency](results/charts/traversal_latency.png)
 
-PuppyGraph env placeholders are included, but a PuppyGraph loader is not implemented yet.
+### Lookup Latency
 
-## Setup
+| metric | cognodb | aura | memgraph |
+| --- | --- | --- | --- |
+| point lookup p50 ms | - | - | - |
+| point lookup p95 ms | - | - | - |
+| indexed lookup p50 ms | - | - | - |
+| indexed lookup p95 ms | - | - | - |
 
-Clone the repo, then from the project root:
+### Aggregation Latency
+
+| metric | cognodb | aura | memgraph |
+| --- | --- | --- | --- |
+| aggregation p50 ms | - | - | - |
+| aggregation p95 ms | - | - | - |
+
+### Ingest Throughput
+
+| metric | cognodb | aura | memgraph |
+| --- | --- | --- | --- |
+| nodes per second | - | - | - |
+| relationships per second | - | - | - |
+
+![Ingest throughput](results/charts/ingest_throughput.png)
+
+### Mixed Read/Write Throughput
+
+| metric | cognodb | aura | memgraph |
+| --- | --- | --- | --- |
+| c1 qps | - | - | - |
+| c10 qps | - | - | - |
+| c40 qps | - | - | - |
+
+![Mixed workload QPS](results/charts/mixed_workload_qps.png)
+
+## Analysis
+
+[FILL IN: interpret the numbers above]
+
+## Methodology
+
+- Dataset: SNAP soc-Pokec relationships sampled to roughly 200,000 relationships.
+- Sampling: BFS-connected subgraph from a reproducible random seed.
+- Read iterations: 3 after warm-up.
+- Warm-up iterations: 1.
+- Start nodes: shared set saved at `results\start_nodes.json`.
+- CognoDB Cloud resource tier: [FILL IN: instance size, limits, region].
+- Neo4j AuraDB Free resource tier: [FILL IN: instance size, limits, region].
+- Memgraph Cloud resource tier: [FILL IN: instance size, limits, region].
+- ArangoDB Oasis resource tier: [FILL IN: instance size, limits, region].
+- TigerGraph Cloud resource tier: [FILL IN: instance size, limits, region].
+- Footprint measurement: [FILL IN: how storage/memory footprint was observed].
+
+## Reproduce It Yourself
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+# Fill in .env with cloud connection details.
+python data/prepare_dataset.py --target-edges 200000 --seed 42
+bash scripts/run_all.sh
+python -m harness.generate_readme
 ```
 
-On Windows PowerShell:
+On Windows PowerShell, activate the virtual environment with:
 
 ```powershell
-python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-copy .env.example .env
 ```
 
-Edit `.env` and fill in only the platforms you want to run. Never commit `.env`.
-
-## Environment Variables
-
-CognoDB:
-
-```env
-COGNODB_URI=
-COGNODB_PASSWORD=
-COGNODB_DATABASE=
-```
-
-Neo4j AuraDB:
-
-```env
-AURA_URI=
-AURA_PASSWORD=
-AURA_DATABASE=
-```
-
-Memgraph:
-
-```env
-MEMGRAPH_URI=
-MEMGRAPH_USER=
-MEMGRAPH_PASSWORD=
-MEMGRAPH_DATABASE=
-```
-
-FalkorDB:
-
-```env
-FALKORDB_DATABASE=
-FALKORDB_HOST=
-FALKORDB_INSTANCE_ID=
-FALKORDB_PORT=
-FALKORDB_USERNAME=
-FALKORDB_PASSWORD=
-```
-
-ArangoDB:
-
-```env
-ARANGO_URL=
-ARANGO_USER=
-ARANGO_PASSWORD=
-ARANGO_DB=
-ARANGO_GRAPH=
-ARANGO_VERTEX_COLLECTION=
-ARANGO_EDGE_COLLECTION=
-```
-
-TigerGraph:
-
-```env
-TG_HOST=
-TG_USERNAME=
-TG_PASSWORD=
-TG_GRAPHNAME=
-```
-
-## Prepare Dataset
-
-Final benchmark dataset:
+To rerun timings against already-loaded databases:
 
 ```bash
-python data/prepare_dataset.py --target-edges 200000 --seed 42
-```
-
-Quick smoke-test dataset:
-
-```bash
-python data/prepare_dataset.py --target-edges 1000 --seed 42 --seed-node 0 --relationships-url https://snap.stanford.edu/data/facebook_combined.txt.gz --relationships-path facebook_combined.txt.gz
-```
-
-Generated CSV files are written to:
-
-```text
-data/nodes.csv
-data/edges.csv
-```
-
-These generated files are ignored by git.
-
-## Run Benchmarks
-
-Run all implemented platforms:
-
-```bash
-python -m harness.runner
-```
-
-Run selected platforms:
-
-```bash
-python -m harness.runner --platforms cognodb,aura,memgraph
-```
-
-Run selected platforms without loading data again:
-
-```bash
-python -m harness.runner --platforms cognodb,aura --skip-load
-```
-
-The default workload performs 100 measured read iterations after warm-up and mixed concurrent workloads at concurrency levels 1, 10, and 40.
-
-## Generate Charts And README
-
-```bash
+python -m harness.runner --skip-load
 python -m harness.make_charts
 python -m harness.generate_readme
 ```
 
-Chart output:
-
-```text
-results/charts/traversal_latency.png
-results/charts/ingest_throughput.png
-results/charts/mixed_workload_qps.png
-```
-
-JSON output:
-
-```text
-results/latest.json
-results/results_<UTC-timestamp>.json
-results/start_nodes.json
-```
-
-Result JSON files and charts are ignored by git.
-
-## One-Command Run
-
-On systems with Bash:
-
-```bash
-bash scripts/run_all.sh --platforms cognodb,aura,memgraph
-```
-
-The script activates `.venv` or `venv` if present, prepares the dataset if `data/edges.csv` is missing, runs the benchmark, and generates charts.
-
-## Results Dashboard
-
-Serve the repo root:
-
-```bash
-python -m http.server 8765 --bind 127.0.0.1
-```
-
-Open:
-
-```text
-http://127.0.0.1:8765/frontend/index.html
-```
-
-The dashboard reads `results/latest.json` and displays platform status, KPI cards, tables, and charts.
-
-## Methodology Notes
-
-- Dataset: SNAP soc-Pokec relationship edge list, sampled to the configured target edge count.
-- Sampling: connected subgraph grown by BFS from a reproducible seed.
-- Node properties: dense benchmark `id`, original SNAP user id, and synthetic `region`.
-- Edge type: directed `FOLLOWS` relationship.
-- Lookup index: `User.user_id_original`.
-- Resource tiers: [FILL IN: instance size, region, and limits per platform].
-- Footprint: [FILL IN: storage or memory footprint source per platform].
-
 ## Caveats
 
-- Do not compare smoke-test results against final benchmark results.
-- Re-running without `--skip-load` may duplicate rows or fail on duplicate keys, depending on the platform.
-- TigerGraph is schema-first, so setup differs from ad hoc Cypher/AQL inserts.
-- FalkorDB needs a real host endpoint; an instance id alone may not be resolvable.
-- PuppyGraph is listed in `.env.example` but does not have a loader yet.
+- TigerGraph uses schema-first GSQL and REST++ upserts, so setup differs from Bolt/AQL ad hoc inserts.
+- Memgraph uses Bolt-compatible ingest queries, but its index DDL differs from Neo4j/Aura.
+- cognodb failed: Failed to read from defunct connection IPv4Address(('db-6d40220d.bravo.databases.cognodb.com', 7687)) (ResolvedIPv4Address(('136.70.132.96', 7687)))
+- aura failed: {neo4j_code: Neo.ClientError.Security.Unauthorized} {message: The client is unauthorized due to authentication failure.} {gql_status: 42NFF} {gql_status_description: error: syntax error or access rule violation - permission/access denied. Access denied, see the security logs for details.}
+- memgraph failed: {neo4j_code: Memgraph.ClientError.Security.Unauthenticated} {message: Authentication failure} {gql_status: 50N42} {gql_status_description: error: general processing exception - unexpected error. Authentication failure}
