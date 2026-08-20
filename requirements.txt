@@ -6,3 +6,4 @@ python-dotenv==1.2.2
 matplotlib==3.10.5
 tqdm==4.67.1
 requests==2.32.3
+FalkorDB==1.7.1

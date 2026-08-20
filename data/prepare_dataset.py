@@ -50,6 +50,12 @@ def parse_args() -> argparse.Namespace:
         help="Random seed used for seed-node selection.",
     )
     parser.add_argument(
+        "--seed-node",
+        type=int,
+        default=None,
+        help="Explicit seed node for BFS sampling; overrides random seed selection.",
+    )
+    parser.add_argument(
         "--relationships-url",
         default=SNAP_RELATIONSHIPS_URL,
         help="Source URL for the gzipped SNAP relationship edge list.",
@@ -182,6 +188,7 @@ def sample_connected_edges(
                 break
 
         visited.update(next_frontier)
+        frontier = next_frontier
 
     if len(selected_edges) < target_edges:
         print(
@@ -232,7 +239,11 @@ def main() -> None:
     args = parse_args()
 
     download_if_missing(args.relationships_url, args.relationships_path)
-    seed_node = choose_seed_node(args.relationships_path, args.seed)
+    seed_node = (
+        args.seed_node
+        if args.seed_node is not None
+        else choose_seed_node(args.relationships_path, args.seed)
+    )
     print(f"Seed node: {seed_node}")
 
     selected_edges = sample_connected_edges(

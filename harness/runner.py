@@ -15,6 +15,7 @@ from typing import Any
 from harness.stats import percentiles
 from loaders.arangodb_loader import ArangoDBLoader
 from loaders.cognodb_loader import CognoDBLoader
+from loaders.falkordb_loader import FalkorDBLoader
 from loaders.memgraph_loader import MemgraphLoader
 from loaders.neo4j_loader import Neo4jLoader
 from loaders.tigergraph_loader import TigerGraphLoader
@@ -41,6 +42,7 @@ PLATFORMS = {
     "cognodb": CognoDBLoader,
     "aura": Neo4jLoader,
     "memgraph": MemgraphLoader,
+    "falkordb": FalkorDBLoader,
     "arango": ArangoDBLoader,
     "tigergraph": TigerGraphLoader,
 }
@@ -293,6 +295,8 @@ def build_runtime(platform_name: str, loader) -> dict[str, Any]:
     """Build platform-specific session and query callables."""
     if platform_name in {"cognodb", "aura", "memgraph"}:
         return build_bolt_runtime(loader)
+    if platform_name == "falkordb":
+        return build_falkordb_runtime(loader)
     if platform_name == "arango":
         return build_arango_runtime(loader)
     if platform_name == "tigergraph":
@@ -403,6 +407,56 @@ def build_arango_runtime(loader) -> dict[str, Any]:
     return {
         "session_factory": session_factory,
         "session_context": lambda: nullcontext(db),
+        "traversal_query": traversal_query,
+        "point_lookup_query": point_lookup_query,
+        "indexed_lookup_query": indexed_lookup_query,
+        "aggregation_query": aggregation_query,
+        "mixed_read_query": mixed_read_query,
+        "mixed_write_query": mixed_write_query,
+    }
+
+
+def build_falkordb_runtime(loader) -> dict[str, Any]:
+    """Build query callables for FalkorDB."""
+    graph = loader.graph
+
+    def session_factory():
+        return graph
+
+    def traversal_query(session, start_id: int, hops: int) -> object:
+        query = f"MATCH (n {{id:$id}})-[*1..{hops}]-(m) RETURN count(m)"
+        return session.query(query, {"id": start_id})
+
+    def point_lookup_query(session, value: int) -> object:
+        return session.query("MATCH (n {id:$value}) RETURN n LIMIT 1", {"value": value})
+
+    def indexed_lookup_query(session, value: int) -> object:
+        return session.query(
+            "MATCH (n:User {user_id_original:$value}) RETURN n LIMIT 1",
+            {"value": value},
+        )
+
+    def aggregation_query(session) -> object:
+        return session.query("MATCH (n) RETURN n.region, count(*)")
+
+    def mixed_read_query(session) -> object:
+        return session.query("MATCH (n:User) RETURN count(n)")
+
+    def mixed_write_query(session, node_id: int) -> object:
+        return session.query(
+            """
+            CREATE (:User {
+                id: $id,
+                user_id_original: $id,
+                region: 'mixed'
+            })
+            """,
+            {"id": node_id},
+        )
+
+    return {
+        "session_factory": session_factory,
+        "session_context": lambda: nullcontext(graph),
         "traversal_query": traversal_query,
         "point_lookup_query": point_lookup_query,
         "indexed_lookup_query": indexed_lookup_query,
